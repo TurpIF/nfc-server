@@ -20,7 +20,6 @@ class Protocol(protocol.Protocol):
 
     def send(self, obj):
         self.transport.write(json.dumps(obj) + '\n')
-        self.transport.flush()
 
     def error(self):
         self.send({ 'success': False })
@@ -71,7 +70,7 @@ class NFC(threading.Thread):
     def start(self):
         assert self.nfc_proc is None
         self.nfc_proc = Popen('./card_polling', stdout=PIPE)
-        self.running = False
+        self.running = True
         super(NFC, self).start()
 
     def run(self):
@@ -84,11 +83,11 @@ class NFC(threading.Thread):
                 self.shm_card.get(lock=False).detected = True
                 self.shm_card.get(lock=False).uid = line[5:]
                 self.shm_card.release()
-            time.sleep(0.5)
+            time.sleep(0.1)
 
     def stop(self):
         self.running = False
-        if self.nfc_prc is not None:
+        if self.nfc_proc is not None:
             self.nfc_proc.terminate()
             self.nfc_proc = None
 
@@ -105,8 +104,10 @@ if __name__ == '__main__':
         nfc.join(1)
         reactor.stop()
 
-    signal.signal(signal.SIGINT, sig_handler)
-    signal.signal(signal.SIGTERM, sig_handler)
+    #signal.signal(signal.SIGTERM, sig_handler)
+    #signal.signal(signal.SIGINT, sig_handler)
 
     nfc.start()
     reactor.run()
+    nfc.stop()
+    nfc.join(1)
